@@ -1,0 +1,134 @@
+    <html>
+
+        <head>
+            <script src="brython_dist.js"></script>
+        </head>
+
+        <body onload="brython(1)">
+
+            <script type="text/python">
+from browser import document, alert
+
+#def echo(event):
+ #   alert(document["zone"].value)
+
+#document['mybutton'].bind('click', echo)
+
+from browser import timer
+
+
+class gameobj:
+    def __init__(self,x,y,xspeed,yspeed,width,height,colour):
+        self.x=x
+        self.y=y
+        self.w=width
+        self.h=height
+        self.col=colour
+        self.xspeed=xspeed
+        self.yspeed=yspeed
+    def update(self):
+        self.x+=self.xspeed
+        self.y+=self.yspeed
+
+bricks=[]
+
+for i in range(15):
+    bricks.append(gameobj(10+i*10,10,0,0,8,8,"#00FF00"))
+    bricks.append(gameobj(6+i*10,20,0,0,8,8,"#0000ff"))
+
+pallet=gameobj(10,180,0,0,30,10,"#ff6666")
+ball=gameobj(50,50,1,-1,3,3,"#00FFFF")
+
+gamevars={"score":0,"lives":3,"gamestate":0,"paused":False}
+
+def rectangles_collide(rect1,rect2):
+    return (rect1.x<rect2.x+rect2.w and rect1.x+rect1.w>rect2.x and rect1.y<rect2.y+rect2.h and rect1.y+rect1.h>rect2.y)
+
+def mouse_pos(evt):
+    global pallet
+    pallet.x=evt.x-15
+    
+document["testcanvas"].bind('mousemove',mouse_pos)
+
+def gameloop():
+    global bricks,pallet,ball,gamevars
+    ctx=document["testcanvas"].getContext("2d")
+    
+    # cls()
+    ctx.fillStyle="#ffffff"
+    ctx.fillRect(0,0,300,200)
+    
+    # game logic, collisions etc 
+    ball.update()
+    if ball.x<0:
+        ball.x=0
+        ball.xspeed*=-1
+    if ball.x>300:
+        ball.x=300
+        ball.xspeed*=-1
+    if ball.y<0:
+        ball.y=0
+        ball.yspeed*=-1
+    if ball.y>200:
+        gamevars["lives"]-=1
+        if gamevars["lives"]<=0:
+            ball.x=0
+            ball.y=0
+            ball.xspeed=0
+            ball.yspeed=0
+            alert("You ran out of lives!\nReload the page to play again")
+        else:
+            ball.x=50
+            ball.y=50
+            ball.xspeed=1
+            ball.yspeed=-1
+    
+    if rectangles_collide(ball,pallet):
+        ball.yspeed*=-1
+    
+    for b in bricks:
+        if rectangles_collide(ball,b):
+            ball.yspeed*=-1
+            bricks.remove(b)
+            gamevars["score"]+=10
+            if len(bricks)==0:
+                alert("Congratulations, you won!\nReload the page if you fancy another go")
+    
+    #draw
+    for b in bricks:
+        ctx.fillStyle=b.col
+        ctx.fillRect(b.x,b.y,b.w,b.h)
+    
+    ctx.fillStyle=ball.col
+    ctx.fillRect(ball.x,ball.y,ball.w,ball.h)
+    ctx.fillStyle=pallet.col
+    ctx.fillRect(pallet.x,pallet.y,pallet.w,pallet.h)
+    
+    #UI
+    ctx.font="10px Arial"
+    uistring="score: %s lives: %s"%(gamevars["score"],gamevars["lives"])
+    ctx.strokeText(uistring,200,10)
+
+def pause():
+    global tmr,gamevars
+    timer.clear_interval(tmr)
+    gamevars["paused"]=True
+
+def unpause():
+    global tmr,gamevars,fps
+    if gamevars["pause"]:
+        gamevars["paused"]=False
+        tmr=timer.set_interval(gameloop,1000/60)
+
+fps=60
+tmr=timer.set_interval(gameloop,1000/60)
+
+document["testcanvas"].bind('mouseout',pause)
+
+            </script>
+
+<canvas id="testcanvas" width="300" height="200" style="border:1px solid #000000;"/>
+
+        </body>
+
+    </html>
